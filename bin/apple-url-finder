@@ -1,0 +1,48 @@
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["feedparser", "requests"]
+# ///
+"""apple-url-finder — Find stream URLs for an Apple podcast."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+import feedparser
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(
+        prog="apple-url-finder",
+        description="Find stream URLs for an Apple podcast.",
+    )
+    p.add_argument("url", help="Apple podcast URL to inspect.")
+    args = p.parse_args()
+
+    feed = feedparser.parse(args.url)
+
+    if not feed.entries:
+        print("Invalid URL or no streams found!", file=sys.stderr)
+        sys.exit(1)
+
+    first = feed.entries[0]
+    print(f"Title: {feed.feed.get('title', 'N/A')}")
+    print(f"Description: {feed.feed.get('subtitle', feed.feed.get('summary', 'N/A'))}")
+
+    enclosures = first.get("enclosures", [])
+    if enclosures:
+        print(f"First Stream URL={enclosures[0].get('href', enclosures[0].get('url', 'N/A'))}")
+    else:
+        print(f"First Stream URL={first.get('link', 'N/A')}")
+
+    print(f"--Stream count={len(feed.entries)}=")
+    for entry in feed.entries:
+        enc = entry.get("enclosures", [])
+        if enc:
+            print(f"------ stream URL={enc[0].get('href', enc[0].get('url', ''))}=")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,36 @@
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["mutagen"]
+# ///
+"""mp3-tags — Display ID3 tags from an MP3 file."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+from mutagen.easyid3 import EasyID3
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(
+        prog="mp3-tags",
+        description="Display ID3 tags from an MP3 file.",
+    )
+    p.add_argument("file", help="Path to the MP3 file.")
+    args = p.parse_args()
+
+    try:
+        tags = EasyID3(args.file)
+    except Exception as exc:
+        print(f"Error reading {args.file}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    for key, values in tags.items():
+        for val in values:
+            print(f"{key}: {val}")
+
+
+if __name__ == "__main__":
+    main()

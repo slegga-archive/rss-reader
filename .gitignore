@@ -1,7 +1,13 @@
-# Test / harness state
-.prove
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
 
-# Perl debugger
+# Perl (legacy)
+.prove
 *.ptkdb
 
 # Logs

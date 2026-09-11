@@ -1,8 +1,0 @@
-Test::Perl::Critic
-Mojo::Feed
-PPR
-Carp::Always
-StreamFinder::Apple
-Mojo::SQLite
-XML::DOM
-Archive::Zip

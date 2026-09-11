@@ -7,10 +7,8 @@ on:
     branches: [master, main]
 
 jobs:
-  perl-tests:
+  python-tests:
     runs-on: ubuntu-latest
-    container:
-      image: perl:5.38
 
     env:
       HOME: /root
@@ -20,40 +18,17 @@ jobs:
       - name: Checkout rss-reader
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            libxml2-dev libsqlite3-dev wget git
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
 
-      - name: Install cpanm
-        run: curl -L https://cpanmin.us | perl - App::cpanminus
+      - name: Set up Python
+        run: uv python install 3.12
 
-      # The tests depend on a sibling utilities-perl checkout that provides
-      # SH::UseLib, SH::ScriptX, and Test::ScriptX. Replace the placeholder
-      # below with the actual GitHub path of that repo. The local sibling
-      # layout expected by the test files is:
-      #   /opt/utilities-perl/lib/SH/UseLib.pm
-      #   /opt/utilities-perl/lib/SH/ScriptX.pm
-      #   /opt/utilities-perl/lib/Test/ScriptX.pm
-      - name: Place utilities-perl sibling
-        run: |
-          mkdir -p /opt/utilities-perl
-          # TODO: replace with: git clone <url-of-utilities-perl> /opt/utilities-perl
-          # Until then, fall back to a no-op PERL5LIB entry and let the
-          # SH::* tests skip naturally if those modules are absent.
-          if [ -d /opt/utilities-perl/lib ]; then
-            echo "PERL5LIB=/opt/utilities-perl/lib" >> $GITHUB_ENV
-          else
-            echo "::warning::utilities-perl not available; integration tests will fail"
-          fi
+      - name: Install dependencies
+        run: uv sync
 
-      - name: Install Perl dependencies
-        run: cpanm --notest --installdeps .
+      - name: Run tests
+        run: uv run pytest tests/ -v
 
-      - name: Run prove
-        # The basic-*.t and perl-critic.t tests do not require utilities-perl
-        # and will pass on their own. The rss-reader.t and RSS.t integration
-        # tests require SH::UseLib / SH::ScriptX; they will skip-or-fail
-        # gracefully if utilities-perl is not present.
-        run: prove -l t/ || (echo "::warning::prove exited non-zero; this is expected if utilities-perl is unavailable. Check the per-test output above." && exit 0)
+      - name: Run lint
+        run: uv run ruff check src/ bin/ tests/

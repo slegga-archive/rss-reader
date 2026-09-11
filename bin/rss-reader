@@ -1,0 +1,10 @@
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["feedparser", "pyyaml", "requests"]
+# ///
+"""rss-reader — RSS Reader.  Pick episodes to download."""
+
+from rss_reader.cli import main
+
+main()
