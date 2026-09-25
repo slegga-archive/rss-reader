@@ -43,7 +43,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="rss-reader",
         description="RSS Reader.  Pick episodes to download.",
     )
-    p.add_argument("--list", type=int, nargs="?", const=7, default=None,
+    p.add_argument("--list", type=int, nargs="?", const=7, default=7,
                    help="List the N best episodes (default 7).")
     p.add_argument("--dryrun", action="store_true",
                    help="Print to screen instead of doing changes.")
@@ -78,6 +78,14 @@ def get_downloaddir(args: argparse.Namespace, config: dict) -> str:
 def die(msg: str) -> None:
     print(msg, file=sys.stderr)
     sys.exit(1)
+
+
+def wsl_mount_hint(dest: Path) -> str:
+    m = re.match(r"^/mnt/([a-zA-Z])(?:/|$)", str(dest))
+    if not m:
+        return ""
+    letter = m.group(1).lower()
+    return f"sudo mount -t drvfs {letter.upper()}: /mnt/{letter} -o uid={os.getuid()},gid={os.getgid()},umask=022"
 
 
 def _fetch_single_feed(url: str, nore: int) -> list[dict]:
@@ -188,6 +196,31 @@ def do_reject(rss: RSS, ids_str: str, *, dryrun: bool) -> None:
     rss.episodes_rejected_add(*ids)
 
 
+def show_progress(done: int, total: int | None) -> None:
+    if total:
+        pct = min(100, done * 100 // total)
+        sys.stderr.write(f"\r[{'#' * (pct // 2):<50}] {pct:3d}%")
+    else:
+        sys.stderr.write(f"\r{done} bytes")
+    sys.stderr.flush()
+
+
+def fetch_to_file(url: str, dest: Path) -> None:
+    r = requests.get(url, stream=True, timeout=300)
+    r.raise_for_status()
+    total = int(r.headers.get("Content-Length") or 0) or None
+    done = 0
+    try:
+        with open(dest, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+                done += len(chunk)
+                show_progress(done, total)
+    finally:
+        if done:
+            print(file=sys.stderr)
+
+
 def do_download(rss: RSS, ids_str: str, downloaddir: str, *, dryrun: bool) -> None:
     ids = [s.strip() for s in ids_str.split(",") if s.strip()]
     episodes = rss.episodes_read_by_ids(*ids)
@@ -207,13 +240,10 @@ def do_download(rss: RSS, ids_str: str, downloaddir: str, *, dryrun: bool) -> No
             dest = dd / filename
             print(f"Downloading {url} -> {dest}")
             try:
-                r = requests.get(url, stream=True, timeout=300)
-                r.raise_for_status()
-                with open(dest, "wb") as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                fetch_to_file(url, dest)
             except Exception as exc:
-                die(f"Download failed: {exc} {url}")
+                hint = wsl_mount_hint(dest) if isinstance(exc, PermissionError) else ""
+                die(f"Download failed: {exc} {url}\n{hint}" if hint else f"Download failed: {exc} {url}")
 
     for ep in episodes:
         rss.episodes_set_downloaded(ep["id"])
@@ -259,8 +289,4 @@ def main(argv: list[str] | None = None) -> None:
         do_download(rss, args.download, dd, dryrun=args.dryrun)
         return
 
-    if args.list is not None:
-        do_list(rss, args.list)
-        return
-
-    die("Must use options to do something")
+    do_list(rss, args.list)

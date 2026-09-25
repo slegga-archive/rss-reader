@@ -1,9 +1,14 @@
-#!/usr/bin/env -S uv run
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["feedparser", "pyyaml", "requests"]
 # ///
 """rss-reader — RSS Reader.  Pick episodes to download."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from rss_reader.cli import main
 

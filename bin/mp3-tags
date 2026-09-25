@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["mutagen"]
@@ -10,8 +10,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from mutagen.easyid3 import EasyID3
-
 
 def main() -> None:
     p = argparse.ArgumentParser(
@@ -20,6 +18,8 @@ def main() -> None:
     )
     p.add_argument("file", help="Path to the MP3 file.")
     args = p.parse_args()
+
+    from mutagen.easyid3 import EasyID3
 
     try:
         tags = EasyID3(args.file)
